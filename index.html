@@ -1,0 +1,1718 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LUCA: Last Universal Common Ancestor</title>
+<style>
+:root {
+  --bg-color: #8B0000;
+  --player-color: #00FFAA;
+  --ui-color: #00FFAA;
+  --text-color: #FFFFFF;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; }
+body { 
+  background:var(--bg-color); 
+  color:var(--text-color); 
+  font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+canvas { 
+  display:block; 
+  position:absolute; 
+  top:0; left:0; 
+  z-index:1;
+}
+
+/* MERKEZİ UI */
+#centerUI {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* ORTA KOLON */
+#centerColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 300px;
+}
+
+#dnaContainer, #healthContainer {
+  width: 300px;
+}
+
+/* SOL ve SAĞ KOLONLAR */
+#leftStats, #rightInfo {
+  margin-top: 10px;
+}
+
+/* SOL TARAF - STATS */
+#leftStats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 18px;
+  text-align: right;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-icon { font-size: 20px; }
+.stat-value { 
+  font-weight: bold; 
+  color: var(--ui-color);
+  min-width: 40px;
+  text-align: left;
+}
+
+/* DNA BAR */
+#dnaBarContainer {
+  width: 100%;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+  border: 2px solid var(--ui-color);
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 255, 170, 0.3);
+}
+
+#dnaBar {
+  height: 100%;
+  background: linear-gradient(90deg, #00FFAA, #0099FF);
+  border-radius: 8px;
+  width: 0%;
+  transition: width 0.3s;
+}
+
+#dnaText {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--ui-color);
+  text-align: center;
+}
+
+/* CAN BAR */
+#healthBarContainer {
+  width: 100%;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+  border: 2px solid #FF5555;
+  overflow: hidden;
+  margin-bottom: 5px;
+  box-shadow: 0 0 10px rgba(255, 85, 85, 0.3);
+}
+
+#healthBar {
+  height: 100%;
+  background: linear-gradient(90deg, #FF5555, #FF0000);
+  border-radius: 8px;
+  width: 100%;
+  transition: width 0.3s;
+}
+
+#healthText {
+  font-size: 16px;
+  font-weight: bold;
+  color: #FF5555;
+  text-align: center;
+}
+
+/* SAĞ TARAF - GAME INFO */
+#rightInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 16px;
+  text-align: left;
+}
+
+#waveInfo { 
+  font-size: 18px; 
+  font-weight: bold; 
+  color: #FFAA00;
+}
+
+#phaseInfo { 
+  color: #00AAFF; 
+  font-weight: bold;
+}
+
+#organismInfo { 
+  color: #FF55FF; 
+  font-style: italic;
+}
+
+/* SEÇİM EKRANLARI */
+.selectionScreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+}
+
+.selectionContainer {
+  background: rgba(20, 20, 40, 0.95);
+  border: 3px solid var(--ui-color);
+  border-radius: 20px;
+  padding: 30px;
+  max-width: 900px;
+  width: 90%;
+  box-shadow: 0 0 30px rgba(0, 255, 170, 0.4);
+}
+
+.screenTitle {
+  font-size: 36px;
+  color: var(--ui-color);
+  text-align: center;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+}
+
+.screenSubtitle {
+  font-size: 20px;
+  color: #00AAFF;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* SEÇİM KARTLARI */
+.selectionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.selectionCard {
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.1), rgba(0, 100, 255, 0.1));
+  border: 2px solid var(--ui-color);
+  border-radius: 15px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.selectionCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 255, 170, 0.3);
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.2), rgba(0, 100, 255, 0.2));
+}
+
+.cardIcon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--ui-color);
+  margin-bottom: 10px;
+}
+
+.cardDesc {
+  font-size: 14px;
+  color: #AAAAFF;
+  margin-bottom: 15px;
+}
+
+.cardBonus {
+  font-size: 18px;
+  font-weight: bold;
+  color: #FFFF00;
+}
+
+/* DİĞER EKRANLAR */
+#storyScreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #0A0A2A, #000010);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+  padding: 40px;
+  text-align: center;
+}
+
+#gameOverScreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,0,0,0.1), rgba(0,0,0,0.95));
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 150;
+}
+
+#victoryScreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(0,255,170,0.1), rgba(0,0,0,0.95));
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 150;
+}
+
+.storyTitle {
+  font-size: 48px;
+  color: var(--ui-color);
+  margin-bottom: 30px;
+  text-shadow: 0 0 15px rgba(0, 255, 170, 0.7);
+}
+
+.storyText {
+  max-width: 600px;
+  font-size: 18px;
+  line-height: 1.6;
+  margin-bottom: 30px;
+  color: #E0F0FF;
+}
+
+.gameButton {
+  background: linear-gradient(135deg, var(--ui-color), #009966);
+  border: none;
+  color: #003322;
+  padding: 15px 40px;
+  font-size: 20px;
+  font-weight: bold;
+  border-radius: 25px;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: all 0.2s;
+}
+
+.gameButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 255, 170, 0.5);
+}
+
+/* NİŞANGAH */
+#crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  color: var(--ui-color);
+  pointer-events: none;
+  z-index: 5;
+  text-shadow: 0 0 5px #000;
+}
+
+/* MOBİL UYUM */
+@media (max-width: 768px) {
+  #centerUI {
+    top: 10px;
+    gap: 20px;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  
+  #centerColumn, #dnaContainer, #healthContainer {
+    width: 250px !important;
+  }
+  
+  #leftStats, #rightInfo {
+    font-size: 14px;
+    margin-top: 5px;
+  }
+  
+  .stat-item {
+    font-size: 14px;
+  }
+  
+  #waveInfo, #phaseInfo, #organismInfo {
+    font-size: 14px;
+  }
+  
+  /* Seçim ekranları mobil */
+  .selectionContainer {
+    padding: 15px;
+    margin: 10px;
+  }
+  
+  .selectionGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .selectionCard {
+    padding: 15px;
+  }
+  
+  .gameButton {
+    padding: 12px 30px;
+    font-size: 18px;
+  }
+  
+  /* Nişangah büyüt */
+  #crosshair {
+    font-size: 32px;
+  }
+}
+
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<!-- MERKEZİ UI -->
+<div id="centerUI">
+  <!-- SOL KOLON -->
+  <div id="leftStats">
+    <div class="stat-item">
+      <span class="stat-icon">⚔️</span>
+      <span class="stat-value" id="damageValue">1</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">⚡</span>
+      <span class="stat-value" id="fireRateValue">1.0/s</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">🏃</span>
+      <span class="stat-value" id="speedValue">300</span>
+    </div>
+  </div>
+  
+  <!-- ORTA KOLON: CAN barı ÜSTTE, DNA barı ALTA -->
+  <div id="centerColumn">
+    <div id="healthContainer">
+      <div id="healthBarContainer">
+        <div id="healthBar"></div>
+      </div>
+      <div id="healthText">100/100</div>
+    </div>
+
+    <div id="dnaContainer">
+      <div id="dnaBarContainer">
+        <div id="dnaBar"></div>
+      </div>
+      <div id="dnaText">DNA: 0/10</div>
+    </div>
+  </div>
+  
+  <!-- SAĞ KOLON -->
+  <div id="rightInfo">
+    <div id="waveInfo">Wave 1: LUCA</div>
+    <div id="phaseInfo">Phase 1 - PRIMORDIAL</div>
+    <div id="organismInfo">Single Cell</div>
+  </div>
+</div>
+
+<!-- NİŞANGAH -->
+<div id="crosshair">+</div>
+
+<!-- HİKAYE EKRANI -->
+<div id="storyScreen">
+  <div class="storyTitle">LUCA: Last Universal Common Ancestor</div>
+  <div class="storyText">
+    <p>In the beginning, there was One.</p>
+    <p>From it, all life emerged. To it, all life returns.</p>
+    <p>But something went wrong. The Origin became corrupted.</p>
+    <p>Now you must evolve through forgotten forms,</p>
+    <p>from primordial essence to impossible futures.</p>
+    <p>Every mutation changes you. Every wave transforms the world.</p>
+    <p style="color:#00FFAA; margin-top:20px; font-style:italic;">
+      What waits at the end of evolution?
+    </p>
+  </div>
+  <button class="gameButton" id="startButton">BEGIN ASCENSION</button>
+</div>
+
+<!-- MUTASYON SEÇİM EKRANI -->
+<div id="mutationScreen" class="selectionScreen">
+  <div class="selectionContainer">
+    <div class="screenTitle">GENETIC MUTATION</div>
+    <div class="screenSubtitle">Select one adaptation:</div>
+    <div class="selectionGrid" id="mutationChoices"></div>
+  </div>
+</div>
+
+<!-- EVRİM SEÇİM EKRANI -->
+<div id="evolutionScreen" class="selectionScreen">
+  <div class="selectionContainer">
+    <div class="screenTitle">EVOLUTIONARY LEAP</div>
+    <div class="screenSubtitle">Major transformation! Choose one:</div>
+    <div class="selectionGrid" id="evolutionChoices"></div>
+  </div>
+</div>
+
+<!-- FİNAL UPGRADE EKRANI -->
+<div id="finalUpgradeScreen" class="selectionScreen">
+  <div class="selectionContainer">
+    <div class="screenTitle">ULTIMATE FORM</div>
+    <div class="screenSubtitle">The final evolution before facing the Origin:</div>
+    <div class="selectionGrid" id="finalChoices"></div>
+  </div>
+</div>
+
+<!-- OYUN BİTTİ EKRANI -->
+<div id="gameOverScreen">
+  <div style="font-size:48px;color:#FF5555;margin-bottom:20px">ASCENSION HALTED</div>
+  <div style="font-size:24px;margin-bottom:20px">Reached Form: <span id="finalWave">1</span></div>
+  <div style="font-size:20px;margin-bottom:30px">Genetic Memory: <span id="finalDNA">0</span></div>
+  <div style="font-size:18px;color:#A0D0FF;max-width:600px;text-align:center;margin-bottom:30px" id="finalMessage">
+    Life finds a way. Even in defeat, your essence returns to the cycle.
+    <br><br>
+    Another will rise. Another will try.
+  </div>
+  <button class="gameButton" id="restartButton">RETURN TO CYCLE</button>
+</div>
+
+<!-- ZAFER EKRANI -->
+<div id="victoryScreen">
+  <div style="font-size:48px;color:#00FFAA;margin-bottom:20px">ASCENSION COMPLETE</div>
+  <div style="font-size:36px;color:#00FFAA;margin-bottom:20px;text-shadow:0 0 10px #00FFAA">THE ORIGIN RESTORED</div>
+  <div style="font-size:24px;margin-bottom:20px">All 31 Forms Mastered</div>
+  <div style="font-size:20px;margin-bottom:30px">Total Genetic Memory: <span id="totalDNA">0</span></div>
+  <div style="font-size:18px;color:#A0D0FF;max-width:600px;text-align:center;margin-bottom:30px">
+    You have reached the end of evolution.<br>
+    From single cell to cosmic entity.<br>
+    From corruption to purity.<br><br>
+    The cycle continues... differently.
+  </div>
+  <button class="gameButton" id="victoryRestartButton">BEGIN NEW CYCLE</button>
+</div>
+
+
+<!-- MOBİL KONTROLLER -->
+<div id="mobileControls" style="display:none;">
+  <div id="fireButton" style="position:fixed; right:20px; bottom:100px; width:60px; height:60px; background:rgba(0,255,170,0.5); border-radius:50%; border:2px solid #00FFAA; z-index:30;">
+    <div style="color:white; font-size:24px; text-align:center; line-height:60px;">🔥</div>
+  </div>
+</div>
+
+<script>
+
+
+
+// =============================================
+// GAME CONFIGURATION
+// =============================================
+const CONFIG = {
+  canvas: document.getElementById('gameCanvas'),
+  ctx: null,
+  width: window.innerWidth,
+  height: window.innerHeight,
+  
+  gameState: {
+    currentWave: 1,
+    currentPhase: 1,
+    dna: 0,
+    dnaRequired: 10,
+    score: 0,
+    gameOver: false,
+    paused: true,
+    inSelectionScreen: false,
+    
+    // Player Stats
+    damage: 1,
+    fireRate: 1.0,
+    maxHealth: 100,
+    currentHealth: 100,
+    speed: 100,
+    projectileSpeed: 500,
+    size: 20,
+    projectileSize: 5,
+    defense: 0,
+    
+    // Special Abilities
+    extraProjectiles: 0,
+    critChance: 0,
+    lifeSteal: 0,
+    regen: 0,
+    slowAura: 0,
+    shield: 0,
+    
+    // Wave tracking
+    enemiesKilledThisWave: 0,
+    totalEnemiesThisWave: 0,
+    waveStartTime: 0,
+    
+    bgColor: '#8B0000'
+  },
+  
+  waveNames: [
+    "LUCA", "Bacteria", "E. coli", "Cyanobacteria", "Archaea",
+    "Halophiles", "Thermophiles", "Protists", "Amoeba", "Euglena",
+    "Fungi", "Mushroom", "Mold", "Plants", "Fern",
+    "Pine", "Rose", "Animals", "Fish", "Salmon",
+    "Reptiles", "Lizard", "Birds", "Sparrow", "Mammals",
+    "Cat", "Dog", "Human", "AI", "Annunaki", "THE ORIGIN"
+  ],
+  
+  phaseNames: ["PRIMORDIAL", "COMPLEX", "SENTIENT", "TRANSCENDENT"],
+  
+  mutationOptions: [
+    { id: 'damage', icon: '⚔️', name: 'Virulent Strain', desc: 'Increase attack potency', bonus: '+1 Damage' },
+    { id: 'fireRate', icon: '⚡', name: 'Rapid Division', desc: 'Replicate faster', bonus: '+1/s Rate' },
+    { id: 'health', icon: '❤️', name: 'Resilient Membrane', desc: 'Strengthen cellular wall', bonus: '+10 Health' },
+    { id: 'speed', icon: '🏃', name: 'Motile Adaptation', desc: 'Increase mobility', bonus: '+100 Speed' },
+    { id: 'projSize', icon: '🎯', name: 'Toxic Expansion', desc: 'Larger projectiles', bonus: '+1px Size' },
+    { id: 'defense', icon: '🛡️', name: 'Defensive Mutation', desc: 'Reduce damage taken', bonus: '+10% Defense' },
+    { id: 'special', icon: '🌀', name: 'Unique Trait', desc: 'Phase-specific ability', bonus: 'Special' }
+  ],
+  
+  phaseSpecials: {
+    1: [
+      { id: 'extraProj', name: 'Binary Fission', desc: 'Split into additional projectiles', bonus: '+1 Projectile' },
+      { id: 'projSpeed', name: 'Ciliary Movement', desc: 'Projectiles move faster', bonus: '+100 Speed' },
+      { id: 'toxic', name: 'Toxic Secretion', desc: 'Projectiles leave damaging trail', bonus: 'Trail Damage' }
+    ],
+    2: [
+      { id: 'regen', name: 'Regenerative Tissue', desc: 'Heal over time', bonus: '1 HP/s' },
+      { id: 'crit', name: 'Venomous Strike', desc: 'Chance for critical damage', bonus: '25% Crit' },
+      { id: 'aoe', name: 'Spore Burst', desc: 'Projectiles explode on impact', bonus: 'AOE Damage' }
+    ],
+    3: [
+      { id: 'slowTime', name: 'Temporal Perception', desc: 'Slow enemies briefly', bonus: 'Slow Field' },
+      { id: 'psychic', name: 'Psychic Feedback', desc: 'Damage reflects to nearby enemies', bonus: 'Chain Damage' },
+      { id: 'shield', name: 'Energy Barrier', desc: 'Temporary damage absorption', bonus: '100 Shield' }
+    ]
+  },
+  
+  player: null,
+  enemies: [],
+  projectiles: [],
+  particles: [],
+  
+  keys: {},
+  mouse: { x: 0, y: 0, down: false },
+  
+  lastTime: 0,
+  enemySpawnTimer: 0,
+  regenTimer: 0,
+};
+
+// =============================================
+// UTILITY FUNCTIONS
+// =============================================
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const random = (min, max) => Math.random() * (max - min) + min;
+const distance = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
+
+// =============================================
+// GAME CLASSES
+// =============================================
+
+class Player {
+  constructor() {
+    this.x = CONFIG.width / 2;
+    this.y = CONFIG.height - 100;
+    this.size = CONFIG.gameState.size;
+    this.color = CONFIG.gameState.currentPhase === 1 ? '#00FFAA' : 
+                 CONFIG.gameState.currentPhase === 2 ? '#00AAFF' : '#AA00FF';
+    this.speed = CONFIG.gameState.speed;
+    this.angle = 0;
+    this.shootCooldown = 0;
+    this.shieldActive = false;
+    this.shieldHealth = 0;
+    this.phase = CONFIG.gameState.currentPhase;
+  }
+  
+  update(dt) {
+    this.angle = Math.atan2(CONFIG.mouse.y - this.y, CONFIG.mouse.x - this.x);
+    
+    if (CONFIG.keys['w'] || CONFIG.keys['ArrowUp']) this.y -= this.speed * dt;
+    if (CONFIG.keys['s'] || CONFIG.keys['ArrowDown']) this.y += this.speed * dt;
+    if (CONFIG.keys['a'] || CONFIG.keys['ArrowLeft']) this.x -= this.speed * dt;
+    if (CONFIG.keys['d'] || CONFIG.keys['ArrowRight']) this.x += this.speed * dt;
+    
+    this.x = clamp(this.x, this.size, CONFIG.width - this.size);
+    this.y = clamp(this.y, this.size, CONFIG.height - this.size);
+    
+    if (this.shootCooldown > 0) this.shootCooldown -= dt;
+    
+    if (CONFIG.mouse.down && this.shootCooldown <= 0) {
+      this.shoot();
+      this.shootCooldown = 1 / CONFIG.gameState.fireRate;
+    }
+    
+    if (CONFIG.gameState.regen > 0) {
+      CONFIG.regenTimer += dt;
+      if (CONFIG.regenTimer >= 1.0) {
+        CONFIG.regenTimer = 0;
+        CONFIG.gameState.currentHealth = Math.min(
+          CONFIG.gameState.maxHealth,
+          CONFIG.gameState.currentHealth + CONFIG.gameState.regen
+        );
+        updateHealthUI();
+      }
+    }
+    
+    if (this.shieldActive && this.shieldHealth <= 0) {
+      this.shieldActive = false;
+    }
+  }
+  
+  shoot() {
+    const baseAngle = this.angle;
+    const projectileCount = 1 + CONFIG.gameState.extraProjectiles;
+    const spread = 0.15;
+    
+    for (let i = 0; i < projectileCount; i++) {
+      const angle = baseAngle + (i - (projectileCount - 1) / 2) * spread;
+      CONFIG.projectiles.push(new Projectile(
+        this.x + Math.cos(angle) * this.size,
+        this.y + Math.sin(angle) * this.size,
+        angle,
+        CONFIG.gameState.damage
+      ));
+    }
+    
+    createParticles(
+      this.x + Math.cos(baseAngle) * this.size,
+      this.y + Math.sin(baseAngle) * this.size,
+      this.color,
+      3,
+      0.3,
+      200
+    );
+  }
+  
+  takeDamage(amount) {
+    if (this.shieldActive && this.shieldHealth > 0) {
+      this.shieldHealth -= amount;
+      if (this.shieldHealth <= 0) {
+        this.shieldActive = false;
+        createParticles(this.x, this.y, '#00AAFF', 8, 0.5, 150);
+      }
+      return;
+    }
+    
+    const damageTaken = amount * (1 - CONFIG.gameState.defense / 100);
+    CONFIG.gameState.currentHealth -= damageTaken;
+    updateHealthUI();
+    
+    createParticles(this.x, this.y, '#FF5555', 5, 0.4, 120);
+    
+    if (CONFIG.gameState.currentHealth <= 0 && !CONFIG.gameState.gameOver) {
+      CONFIG.gameState.gameOver = true;
+      showGameOverScreen();
+    }
+  }
+  
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    
+    if (this.shieldActive) {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size + 5, 0, Math.PI * 2);
+      ctx.strokeStyle = '#00AAFF';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#00AAFF';
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    
+    ctx.fillStyle = this.color;
+    
+    if (CONFIG.gameState.currentPhase === 1) {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#00FFAA';
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2 + Date.now() * 0.001;
+        const radius = this.size * 0.7;
+        ctx.beginPath();
+        ctx.arc(Math.cos(angle) * radius, Math.sin(angle) * radius, this.size * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (CONFIG.gameState.currentPhase === 2) {
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const radius = this.size * (0.8 + Math.sin(Date.now() * 0.002 + i) * 0.2);
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.moveTo(-this.size * 0.5, -this.size * 0.3);
+      ctx.lineTo(-this.size * 1.2, 0);
+      ctx.lineTo(-this.size * 0.5, this.size * 0.3);
+      ctx.moveTo(this.size * 0.5, -this.size * 0.3);
+      ctx.lineTo(this.size * 1.2, 0);
+      ctx.lineTo(this.size * 0.5, this.size * 0.3);
+      ctx.fill();
+    }
+    
+    ctx.restore();
+  }
+}
+
+class Projectile {
+  constructor(x, y, angle, damage) {
+    this.x = x;
+    this.y = y;
+    this.angle = angle;
+    this.speed = CONFIG.gameState.projectileSpeed;
+    this.damage = damage;
+    this.size = CONFIG.gameState.projectileSize;
+    this.color = CONFIG.gameState.currentPhase === 1 ? '#00FFAA' : 
+                 CONFIG.gameState.currentPhase === 2 ? '#00AAFF' : '#AA00FF';
+    this.life = 3.0;
+  }
+  
+  update(dt) {
+    this.x += Math.cos(this.angle) * this.speed * dt;
+    this.y += Math.sin(this.angle) * this.speed * dt;
+    this.life -= dt;
+    
+    return this.life > 0 && 
+           this.x > -50 && this.x < CONFIG.width + 50 &&
+           this.y > -50 && this.y < CONFIG.height + 50;
+  }
+  
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-this.size * 3, 0);
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = this.size / 2;
+    ctx.globalAlpha = 0.5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    
+    ctx.restore();
+  }
+}
+
+// =============================================
+// ENEMY CLASS - NORMAL HEALTH SİSTEMİ
+// =============================================
+class Enemy {
+  constructor() {
+    this.wave = CONFIG.gameState.currentWave;
+    this.phase = CONFIG.gameState.currentPhase;
+    
+    // Temel özellikler
+    this.size = 15 + (this.wave * 0.3) + ((this.phase - 1) * 5);
+    this.speed = 50 + (this.wave * 1.5);
+    
+    // NORMAL HEALTH SİSTEMİ
+    // Wave ve phase'e göre can hesapla
+    this.maxHealth = this.calculateHealth();
+    this.health = this.maxHealth;
+    
+    this.color = this.getRandomColor();
+    this.dnaValue = 10;
+    
+    // Pozisyon
+    this.x = random(this.size, CONFIG.width - this.size);
+    this.y = -this.size;
+    
+    // AI
+    this.angle = Math.random() * Math.PI * 2;
+    this.targetAngle = 0;
+    this.aiTimer = 0;
+    this.aiUpdateRate = 0.5 + Math.random() * 1.0;
+    
+    this.isDead = false;
+  }
+  
+  calculateHealth() {
+    // Wave 1: 30 can
+    // Wave 2: 40 can
+    // Wave 3: 50 can
+    // Her wave'de +10 can, her phase'de x1.5
+    const baseHealth = 14 + (this.wave * 7);
+    const phaseMultiplier = this.phase === 1 ? 1 : this.phase === 2 ? 1.5 : 2;
+    
+    return Math.floor(baseHealth * phaseMultiplier);
+  }
+  
+  getRandomColor() {
+    const phaseColors = {
+      1: ['#FF5555', '#FF8800', '#FFAA00'],
+      2: ['#00AA00', '#00CC00', '#00FF00'],
+      3: ['#AA00FF', '#8800FF', '#5500FF']
+    };
+    const colors = phaseColors[this.phase] || phaseColors[1];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+  
+  update(dt, player) {
+    if (this.isDead) return false;
+    
+    this.aiTimer += dt;
+    if (this.aiTimer >= this.aiUpdateRate) {
+      this.aiTimer = 0;
+      this.updateAI(player);
+    }
+    
+    const dx = Math.cos(this.targetAngle);
+    const dy = Math.sin(this.targetAngle);
+    this.x += dx * this.speed * dt;
+    this.y += dy * this.speed * dt;
+    
+    this.angle += 0.5 * dt;
+    
+    // Çarpışma kontrolü
+    const distToPlayer = distance(this.x, this.y, player.x, player.y);
+    if (distToPlayer < this.size + player.size) {
+      player.takeDamage(5 + this.wave * 0.5);
+      this.health = 0;
+    }
+    
+    // Ekran dışı kontrol
+    if (this.y > CONFIG.height + this.size * 2) {
+      return false;
+    }
+    
+    return this.health > 0;
+  }
+  
+  updateAI(player) {
+    const dx = player.x - this.x;
+    const dy = player.y - this.y;
+    
+    if (this.phase === 1) {
+      this.targetAngle = Math.atan2(dy, dx);
+    } else if (this.phase === 2) {
+      let avoidX = 0, avoidY = 0;
+      for (const enemy of CONFIG.enemies) {
+        if (enemy === this) continue;
+        const edx = this.x - enemy.x;
+        const edy = this.y - enemy.y;
+        const edist = Math.hypot(edx, edy);
+        if (edist < 100) {
+          avoidX += edx / edist;
+          avoidY += edy / edist;
+        }
+      }
+      
+      const targetAngle = Math.atan2(dy, dx);
+      const avoidAngle = Math.atan2(avoidY, avoidX);
+      this.targetAngle = targetAngle + avoidAngle * 0.3;
+    } else {
+      const pattern = Math.sin(Date.now() * 0.001 + this.x * 0.01) * 0.5;
+      this.targetAngle = Math.atan2(dy, dx) + pattern;
+    }
+  }
+  
+  takeDamage(amount) {
+    if (this.isDead) return false;
+    
+    // Kritik vuruş şansı
+    let damage = amount;
+    if (Math.random() < CONFIG.gameState.critChance) {
+      damage *= 2;
+      createParticles(this.x, this.y, '#FFFF00', 5, 0.3, 100);
+    }
+    
+    this.health -= damage;
+    
+    // Hasar partikülleri
+    createParticles(this.x, this.y, this.color, 3, 0.2, 80);
+    
+    // Ölüm kontrolü
+    if (this.health <= 0) {
+      this.isDead = true;
+      CONFIG.gameState.enemiesKilledThisWave++;
+      CONFIG.gameState.dna += this.dnaValue;
+      CONFIG.gameState.score += this.dnaValue;
+      
+      // Ölüm partikülleri
+      createParticles(this.x, this.y, '#FFFFFF', 6, 0.4, 120);
+      
+      // UI güncelle
+      updateDNAUI();
+      
+      // Life steal
+      if (CONFIG.gameState.lifeSteal > 0) {
+        CONFIG.gameState.currentHealth = Math.min(
+          CONFIG.gameState.maxHealth,
+          CONFIG.gameState.currentHealth + CONFIG.gameState.lifeSteal
+        );
+        updateHealthUI();
+      }
+      
+      // Wave tamamlama kontrolü
+      checkWaveCompletion();
+      
+      return false;
+    }
+    
+    return true;
+  }
+  
+  draw(ctx) {
+    // Düşman gövdesi
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    
+    if (this.phase === 1) {
+      // Basit daire
+      ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+    } else if (this.phase === 2) {
+      // Çokgen
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const radius = this.size;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    } else {
+      // Yıldız şekli
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const radius = i % 2 === 0 ? this.size : this.size * 0.5;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    }
+    
+    ctx.fill();
+    ctx.restore();
+    
+    // CAN BARI
+    if (this.maxHealth > 0) {
+      const barWidth = this.size * 2;
+      const barHeight = 6;
+      const barX = this.x - this.size;
+      const barY = this.y - this.size - 15;
+      const healthPercent = this.health / this.maxHealth;
+      
+      // Arka plan
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(barX, barY, barWidth, barHeight);
+      
+      // Can barı
+      ctx.fillStyle = healthPercent > 0.5 ? '#00FF00' : 
+                     healthPercent > 0.25 ? '#FFFF00' : '#FF0000';
+      ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+      
+      // Çerçeve
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(barX, barY, barWidth, barHeight);
+      
+      // Can değeri (küçük font)
+      if (this.health < this.maxHealth) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${Math.ceil(this.health)}/${this.maxHealth}`, this.x, barY - 5);
+      }
+    }
+  }
+}
+
+// =============================================
+// PARTICLE SYSTEM
+// =============================================
+function createParticles(x, y, color, count, life, speed) {
+  for (let i = 0; i < count; i++) {
+    if (CONFIG.particles.length > 500) break;
+    
+    const angle = Math.random() * Math.PI * 2;
+    const velocity = Math.random() * speed;
+    
+    CONFIG.particles.push({
+      x, y,
+      vx: Math.cos(angle) * velocity,
+      vy: Math.sin(angle) * velocity,
+      size: Math.random() * 3 + 1,
+      color: color,
+      life: life,
+      maxLife: life
+    });
+  }
+}
+
+// =============================================
+// GAME MECHANICS
+// =============================================
+function startWave(waveNumber) {
+  CONFIG.gameState.currentWave = waveNumber;
+  CONFIG.gameState.enemiesKilledThisWave = 0;
+  CONFIG.gameState.dna = 0;
+
+  // DNA gereksinimleri
+  if (waveNumber === 1) {
+    CONFIG.gameState.dnaRequired = 30;
+  } else if (waveNumber === 2) {
+    CONFIG.gameState.dnaRequired = 40;
+  } else {
+    CONFIG.gameState.dnaRequired = waveNumber * 10;
+  }
+
+  CONFIG.gameState.waveStartTime = Date.now();
+  
+  // Phase calculation
+  if (waveNumber <= 10) CONFIG.gameState.currentPhase = 1;
+  else if (waveNumber <= 20) CONFIG.gameState.currentPhase = 2;
+  else if (waveNumber <= 30) CONFIG.gameState.currentPhase = 3;
+  else CONFIG.gameState.currentPhase = 4;
+  
+  updateBackgroundColor();
+  updateUI();
+  
+  // Temizle
+  CONFIG.enemies = [];
+  CONFIG.projectiles = [];
+  CONFIG.particles = [];
+  
+  // Player güncelle
+  if (CONFIG.player) {
+    CONFIG.player.phase = CONFIG.gameState.currentPhase;
+    CONFIG.player.color = CONFIG.gameState.currentPhase === 1 ? '#00FFAA' : 
+                          CONFIG.gameState.currentPhase === 2 ? '#00AAFF' : '#AA00FF';
+  }
+  
+  CONFIG.enemySpawnTimer = 0;
+  CONFIG.gameState.totalEnemiesThisWave = 0;
+}
+
+function spawnEnemies(dt) {
+  if (CONFIG.gameState.inSelectionScreen) return;
+  
+  const activeEnemies = CONFIG.enemies.filter(e => !e.isDead).length;
+  const maxActiveEnemies = Math.floor(CONFIG.gameState.currentWave * 2);
+  
+  if (activeEnemies >= maxActiveEnemies) return;
+  
+  let totalEnemiesTarget;
+  if (CONFIG.gameState.currentWave === 1) {
+    totalEnemiesTarget = 15;
+  } else if (CONFIG.gameState.currentWave === 2) {
+    totalEnemiesTarget = 20;
+  } else {
+    totalEnemiesTarget = CONFIG.gameState.currentWave * 5;
+  }
+  
+  const totalSpawned = CONFIG.gameState.totalEnemiesThisWave;
+  if (totalSpawned >= totalEnemiesTarget) return;
+  
+  CONFIG.enemySpawnTimer -= dt;
+  if (CONFIG.enemySpawnTimer <= 0) {
+    let spawnRate;
+    if (CONFIG.gameState.currentWave === 1) {
+      spawnRate = 0.5;
+    } else if (CONFIG.gameState.currentWave === 2) {
+      spawnRate = 0.4;
+    } else {
+      spawnRate = Math.max(0.2, 1.0 - (CONFIG.gameState.currentWave * 0.05));
+    }
+    
+    CONFIG.enemySpawnTimer = spawnRate;
+    
+    CONFIG.enemies.push(new Enemy());
+    CONFIG.gameState.totalEnemiesThisWave++;
+  }
+}
+
+function checkWaveCompletion() {
+  if (CONFIG.gameState.dna >= CONFIG.gameState.dnaRequired) {
+    completeWave();
+  }
+}
+
+function completeWave() {
+  CONFIG.gameState.paused = true;
+  CONFIG.gameState.inSelectionScreen = true;
+  
+  if (CONFIG.gameState.currentWave === 31) {
+    setTimeout(() => showVictoryScreen(), 1000);
+    return;
+  }
+  
+  setTimeout(() => {
+    if (CONFIG.gameState.currentWave === 10 || 
+        CONFIG.gameState.currentWave === 20 || 
+        CONFIG.gameState.currentWave === 30) {
+      showEvolutionScreen();
+    } else if (CONFIG.gameState.currentWave === 30) {
+      showFinalUpgradeScreen();
+    } else {
+      showMutationScreen();
+    }
+  }, 800);
+}
+
+function updateBackgroundColor() {
+  const wave = CONFIG.gameState.currentWave;
+  const phase = CONFIG.gameState.currentPhase;
+  
+  let color;
+  
+  if (phase === 1) {
+    const progress = (wave - 1) / 9;
+    const r = Math.floor(139 + (255 - 139) * progress);
+    const g = Math.floor(0 + (215 - 0) * progress);
+    color = `rgb(${r}, ${g}, 0)`;
+  } else if (phase === 2) {
+    const progress = (wave - 11) / 9;
+    const r = Math.floor(255 - (255 - 0) * progress);
+    const g = Math.floor(215 + (100 - 215) * progress);
+    color = `rgb(${r}, ${g}, 0)`;
+  } else if (phase === 3) {
+    const progress = (wave - 21) / 9;
+    const r = Math.floor(0 * (1 - progress));
+    const g = Math.floor(100 * (1 - progress));
+    color = `rgb(${r}, ${g}, 0)`;
+  } else {
+    color = '#000000';
+  }
+  
+  CONFIG.gameState.bgColor = color;
+  document.body.style.backgroundColor = color;
+}
+
+// =============================================
+// UI UPDATES
+// =============================================
+function updateUI() {
+  const s = CONFIG.gameState;
+  
+  // DNA Bar
+  const dnaPercent = (s.dna / s.dnaRequired) * 100;
+  document.getElementById('dnaBar').style.width = `${Math.min(dnaPercent, 100)}%`;
+  document.getElementById('dnaText').textContent = `DNA: ${s.dna}/${s.dnaRequired}`;
+  
+  // Stats
+  document.getElementById('damageValue').textContent = s.damage.toFixed(1);
+  document.getElementById('fireRateValue').textContent = s.fireRate.toFixed(1) + '/s';
+  document.getElementById('speedValue').textContent = s.speed.toFixed(0);
+  
+  // Wave Info
+  const waveName = CONFIG.waveNames[s.currentWave - 1] || 'Unknown';
+  document.getElementById('waveInfo').textContent = `Wave ${s.currentWave}: ${waveName}`;
+  document.getElementById('phaseInfo').textContent = `Phase ${s.currentPhase} - ${CONFIG.phaseNames[s.currentPhase - 1]}`;
+  document.getElementById('organismInfo').textContent = getOrganismDescription(s.currentWave);
+
+  updateHealthUI();
+}
+
+function updateHealthUI() {
+  const s = CONFIG.gameState;
+  const healthPercent = (s.currentHealth / s.maxHealth) * 100;
+  
+  const healthBar = document.getElementById('healthBar');
+  const healthText = document.getElementById('healthText');
+  
+  healthBar.style.width = `${healthPercent}%`;
+  healthText.textContent = `${Math.floor(s.currentHealth)}/${s.maxHealth}`;
+  
+  if (healthPercent > 50) {
+    healthBar.style.background = 'linear-gradient(90deg, #00FF00, #FFFF00)';
+  } else if (healthPercent > 25) {
+    healthBar.style.background = 'linear-gradient(90deg, #FFFF00, #FF8800)';
+  } else {
+    healthBar.style.background = 'linear-gradient(90deg, #FF5555, #FF0000)';
+  }
+}
+
+function updateDNAUI() {
+  const s = CONFIG.gameState;
+  const dnaPercent = (s.dna / s.dnaRequired) * 100;
+  document.getElementById('dnaBar').style.width = `${Math.min(dnaPercent, 100)}%`;
+  document.getElementById('dnaText').textContent = `DNA: ${s.dna}/${s.dnaRequired}`;
+}
+
+function getOrganismDescription(wave) {
+  const descriptions = [
+    "Primordial Cell", "Simple Bacteria", "Intestinal Bacteria", "Photosynthetic",
+    "Extremophile", "Salt-loving", "Heat-loving", "First Eukaryote",
+    "Shape-shifter", "Photosynthetic", "Fungal Network", "Edible Fungus",
+    "Antibiotic", "Plant Kingdom", "Ancient Fern", "Coniferous",
+    "Flowering", "Animal Kingdom", "Aquatic", "Migratory",
+    "Cold-blooded", "Agile", "Avian", "Common Bird",
+    "Mammalian", "Feline", "Canine", "Human",
+    "Artificial", "Ancient", "THE ORIGIN"
+  ];
+  return descriptions[wave - 1] || "Evolving...";
+}
+
+// =============================================
+// SELECTION SCREENS (KISA VERSİYON)
+// =============================================
+function showMutationScreen() {
+  const screen = document.getElementById('mutationScreen');
+  const container = document.getElementById('mutationChoices');
+  container.innerHTML = '';
+  
+  CONFIG.mutationOptions.forEach(option => {
+    const card = document.createElement('div');
+    card.className = 'selectionCard';
+    
+    let bonus = option.bonus;
+    
+    if (option.id === 'special') {
+      const specials = CONFIG.phaseSpecials[CONFIG.gameState.currentPhase] || CONFIG.phaseSpecials[1];
+      const special = specials[Math.floor(Math.random() * specials.length)];
+      bonus = special.bonus;
+      
+      card.onclick = () => {
+        applySpecialUpgrade(special.id);
+        screen.style.display = 'none';
+        startNextWave();
+      };
+    } else {
+      card.onclick = () => {
+        applyMutation(option.id);
+        screen.style.display = 'none';
+        startNextWave();
+      };
+    }
+    
+    card.innerHTML = `
+      <div class="cardIcon">${option.icon}</div>
+      <div class="cardTitle">${option.name}</div>
+      <div class="cardDesc">${option.desc}</div>
+      <div class="cardBonus">${bonus}</div>
+    `;
+    
+    container.appendChild(card);
+  });
+  
+  screen.style.display = 'flex';
+}
+
+function showEvolutionScreen() {
+  const screen = document.getElementById('evolutionScreen');
+  const container = document.getElementById('evolutionChoices');
+  container.innerHTML = '';
+  
+  CONFIG.mutationOptions.forEach(option => {
+    const card = document.createElement('div');
+    card.className = 'selectionCard';
+    
+    let bonus = option.bonus;
+    
+    // Evolution: 2x bonuses
+    if (option.id === 'damage') bonus = '+1 Damage';
+    else if (option.id === 'fireRate') bonus = '+1/s Rate';
+    else if (option.id === 'health') bonus = '+50 Health';
+    else if (option.id === 'speed') bonus = '+100 Speed';
+    else if (option.id === 'projSize') bonus = '+5px Size';
+    else if (option.id === 'defense') bonus = '+50% Defense';
+    
+    if (option.id === 'special') {
+      const specials = CONFIG.phaseSpecials[CONFIG.gameState.currentPhase] || CONFIG.phaseSpecials[1];
+      const special = specials[Math.floor(Math.random() * specials.length)];
+      bonus = special.bonus + ' x2';
+      
+      card.onclick = () => {
+        applySpecialUpgrade(special.id, true);
+        screen.style.display = 'none';
+        startNextWave();
+      };
+    } else {
+      card.onclick = () => {
+        applyMutation(option.id, true);
+        screen.style.display = 'none';
+        startNextWave();
+      };
+    }
+    
+    card.innerHTML = `
+      <div class="cardIcon">${option.icon}</div>
+      <div class="cardTitle">${option.name} (EVOLVED)</div>
+      <div class="cardDesc">${option.desc}</div>
+      <div class="cardBonus">${bonus}</div>
+    `;
+    
+    container.appendChild(card);
+  });
+  
+  screen.style.display = 'flex';
+}
+
+function showFinalUpgradeScreen() {
+  const screen = document.getElementById('finalUpgradeScreen');
+  screen.style.display = 'flex';
+  // Kısaltıldı
+}
+
+function applyMutation(type, isEvolution = false) {
+  const multiplier = isEvolution ? 2 : 1;
+  
+  switch(type) {
+    case 'damage':
+      CONFIG.gameState.damage += 1 * multiplier;
+      break;
+    case 'fireRate':
+      CONFIG.gameState.fireRate += 1 * multiplier;
+      break;
+    case 'health':
+      CONFIG.gameState.maxHealth += 10 * multiplier;
+      CONFIG.gameState.currentHealth += 10 * multiplier;
+      break;
+    case 'speed':
+      CONFIG.gameState.speed += 100 * multiplier;
+      if (CONFIG.player) CONFIG.player.speed = CONFIG.gameState.speed;
+      break;
+    case 'projSize':
+      CONFIG.gameState.projectileSize += 1 * multiplier;
+      break;
+    case 'defense':
+      CONFIG.gameState.defense += 10 * multiplier;
+      CONFIG.gameState.defense = Math.min(CONFIG.gameState.defense, 80);
+      break;
+  }
+  
+  updateUI();
+}
+
+function applySpecialUpgrade(type, isEvolution = false) {
+  const multiplier = isEvolution ? 2 : 1;
+  
+  switch(type) {
+    case 'extraProj':
+      CONFIG.gameState.extraProjectiles += 1 * multiplier;
+      break;
+    case 'projSpeed':
+      CONFIG.gameState.projectileSpeed += 100 * multiplier;
+      break;
+    case 'regen':
+      CONFIG.gameState.regen += 1 * multiplier;
+      break;
+    case 'crit':
+      CONFIG.gameState.critChance += 0.25 * multiplier;
+      break;
+    case 'shield':
+      CONFIG.player.shieldHealth += 100 * multiplier;
+      CONFIG.player.shieldActive = true;
+      break;
+  }
+}
+
+function startNextWave() {
+  CONFIG.gameState.paused = false;
+  CONFIG.gameState.inSelectionScreen = false;
+  startWave(CONFIG.gameState.currentWave + 1);
+}
+
+function showGameOverScreen() {
+  const screen = document.getElementById('gameOverScreen');
+  document.getElementById('finalWave').textContent = CONFIG.gameState.currentWave;
+  document.getElementById('finalDNA').textContent = CONFIG.gameState.score + CONFIG.gameState.dna;
+  screen.style.display = 'flex';
+}
+
+function showVictoryScreen() {
+  const screen = document.getElementById('victoryScreen');
+  document.getElementById('totalDNA').textContent = CONFIG.gameState.score;
+  screen.style.display = 'flex';
+}
+
+// =============================================
+// GAME LOOP
+// =============================================
+function gameLoop(timestamp) {
+  if (!CONFIG.lastTime) CONFIG.lastTime = timestamp;
+  const dt = Math.min(0.033, (timestamp - CONFIG.lastTime) / 1000);
+  CONFIG.lastTime = timestamp;
+  
+  if (!CONFIG.gameState.gameOver && !CONFIG.gameState.paused) {
+    CONFIG.player.update(dt);
+    spawnEnemies(dt);
+    
+    for (let i = CONFIG.projectiles.length - 1; i >= 0; i--) {
+      if (!CONFIG.projectiles[i].update(dt)) {
+        CONFIG.projectiles.splice(i, 1);
+      }
+    }
+    
+    for (let i = CONFIG.enemies.length - 1; i >= 0; i--) {
+      if (!CONFIG.enemies[i].update(dt, CONFIG.player) || CONFIG.enemies[i].isDead) {
+        CONFIG.enemies.splice(i, 1);
+      }
+    }
+    
+    for (let i = CONFIG.particles.length - 1; i >= 0; i--) {
+      const p = CONFIG.particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      
+      if (p.life <= 0) {
+        CONFIG.particles.splice(i, 1);
+      }
+    }
+    
+    checkCollisions();
+  }
+  
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function draw() {
+  const ctx = CONFIG.ctx;
+  
+  ctx.fillStyle = CONFIG.gameState.bgColor;
+  ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+  
+  if (CONFIG.gameState.currentWave === 31) {
+    ctx.fillStyle = '#FFFFFF';
+    for (let i = 0; i < 100; i++) {
+      const x = (i * 37) % CONFIG.width;
+      const y = (i * 53) % CONFIG.height;
+      const size = Math.sin(Date.now() * 0.001 + i) * 0.5 + 0.5;
+      ctx.globalAlpha = 0.5 + Math.sin(Date.now() * 0.002 + i) * 0.3;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  
+  ctx.globalAlpha = 0.7;
+  for (const p of CONFIG.particles) {
+    const alpha = p.life / p.maxLife;
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  
+  for (const enemy of CONFIG.enemies) {
+    enemy.draw(ctx);
+  }
+  
+  for (const proj of CONFIG.projectiles) {
+    proj.draw(ctx);
+  }
+  
+  CONFIG.player.draw(ctx);
+}
+
+function checkCollisions() {
+  for (let i = CONFIG.projectiles.length - 1; i >= 0; i--) {
+    const proj = CONFIG.projectiles[i];
+    
+    for (let j = CONFIG.enemies.length - 1; j >= 0; j--) {
+      const enemy = CONFIG.enemies[j];
+      
+      const dist = distance(proj.x, proj.y, enemy.x, enemy.y);
+      if (dist < enemy.size + proj.size) {
+        const killed = !enemy.takeDamage(proj.damage);
+        if (killed) {
+          CONFIG.projectiles.splice(i, 1);
+          break;
+        }
+      }
+    }
+  }
+}
+
+// Mobil kontrol tespiti
+function detectMobile() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+// =============================================
+// INITIALIZATION
+// =============================================
+function initGame() {
+ // Mobil kontrol
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+
+document.getElementById('mobileControls').style.display = 'block';
+    setupMobileControls();
+
+    // Mobil için UI ayarları
+    document.getElementById('centerUI').style.flexDirection = 'column';
+    document.getElementById('centerColumn').style.marginTop = '10px';
+    
+    // Daha yavaş spawn rate
+    CONFIG.gameState.spawnRateMultiplier = 1.5;
+
+    // Daha az düşman
+    CONFIG.gameState.maxActiveEnemiesMultiplier = 1.2;
+    // Daha az partikül
+    CONFIG.particles.max = 200;
+  }
+
+
+  CONFIG.canvas.width = CONFIG.width = window.innerWidth;
+  CONFIG.canvas.height = CONFIG.height = window.innerHeight;
+  CONFIG.ctx = CONFIG.canvas.getContext('2d');
+  
+  CONFIG.player = new Player();
+  
+  setupEventListeners();
+  updateUI();
+  updateHealthUI();
+  startWave(1);
+}
+
+function setupEventListeners() {
+  window.addEventListener('keydown', (e) => CONFIG.keys[e.key] = true);
+  window.addEventListener('keyup', (e) => CONFIG.keys[e.key] = false);
+  
+  window.addEventListener('mousemove', (e) => {
+    CONFIG.mouse.x = e.clientX;
+    CONFIG.mouse.y = e.clientY;
+    
+    const crosshair = document.getElementById('crosshair');
+    crosshair.style.left = (e.clientX - 12) + 'px';
+    crosshair.style.top = (e.clientY - 12) + 'px';
+  });
+  
+  window.addEventListener('mousedown', () => CONFIG.mouse.down = true);
+  window.addEventListener('mouseup', () => CONFIG.mouse.down = false);
+  
+  document.getElementById('startButton').addEventListener('click', () => {
+    document.getElementById('storyScreen').style.display = 'none';
+    CONFIG.gameState.paused = false;
+    requestAnimationFrame(gameLoop);
+  });
+  
+  document.getElementById('restartButton').addEventListener('click', () => location.reload());
+  document.getElementById('victoryRestartButton').addEventListener('click', () => location.reload());
+  
+  window.addEventListener('resize', () => {
+    CONFIG.canvas.width = CONFIG.width = window.innerWidth;
+    CONFIG.canvas.height = CONFIG.height = window.innerHeight;
+  });
+}
+
+// Touch kontrollerini geliştir
+function setupMobileControls() {
+  const canvas = CONFIG.canvas;
+  
+  // Virtual joystick için
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let isTouching = false;
+  
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    isTouching = true;
+    
+    // Dokunma noktasına ateş et
+    CONFIG.mouse.x = touch.clientX;
+    CONFIG.mouse.y = touch.clientY;
+    CONFIG.mouse.down = true;
+  });
+  
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    
+    // Hareket kontrolü (basit joystick)
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    
+    // Player hareketi
+    const moveSpeed = 0.5;
+    CONFIG.player.x += dx * moveSpeed;
+    CONFIG.player.y += dy * moveSpeed;
+    
+    // Sınırlar
+    CONFIG.player.x = clamp(CONFIG.player.x, CONFIG.player.size, CONFIG.width - CONFIG.player.size);
+    CONFIG.player.y = clamp(CONFIG.player.y, CONFIG.player.size, CONFIG.height - CONFIG.player.size);
+    
+    // Nişangah takibi
+    CONFIG.mouse.x = touch.clientX;
+    CONFIG.mouse.y = touch.clientY;
+    
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+  });
+  
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    isTouching = false;
+    CONFIG.mouse.down = false;
+  });
+}
+
+window.addEventListener('load', initGame);
+</script>
+</body>
+</html>
