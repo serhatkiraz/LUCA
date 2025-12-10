@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUCA | Metabolic Pathway</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0, 40, 20, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 60, 30, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(0, 80, 40, 0.2) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .pulse {
+            animation: pulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        h1 {
+            font-size: clamp(2rem, 7vw, 4rem); /* Daha küçük */
+            margin-bottom: 0.3rem; /* Daha az boşluk */
+            text-shadow: 0 0 10px #00ff88, 0 0 20px #00ff88;
+            letter-spacing: 2px; /* Daha az harf aralığı */
+        }
+        
+        .subtitle {
+            font-size: clamp(0.8rem, 2.5vw, 1rem); /* Daha küçük */
+            margin-bottom: 0.8rem; /* Daha az boşluk */
+            color: #88ffaa;
+            max-width: 500px; /* Daha dar */
+            line-height: 1.4;
+        }
+        
+        .main-question {
+            font-size: clamp(1.2rem, 4vw, 1.8rem); /* Daha küçük */
+            margin: 1.5rem 0 0.8rem; /* Daha az boşluk */
+            line-height: 1.3;
+            max-width: 700px; /* Daha dar */
+            text-shadow: 0 0 5px #00ff88;
+            color: #ffffff;
+        }
+        
+        .pathway-subtitle {
+            font-size: clamp(0.9rem, 2.8vw, 1.1rem); /* Daha küçük */
+            margin-bottom: 2rem; /* Daha az boşluk */
+            color: #88ffaa;
+            font-style: italic;
+        }
+        
+        .options-container {
+            display: flex;
+            justify-content: center;
+            gap: clamp(15px, 4vw, 40px); /* Daha küçük gap */
+            margin: 1.5rem 0 2.5rem; /* Daha az boşluk */
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: 900px;
+        }
+        
+        .option {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: clamp(220px, 38vw, 320px); /* Daha küçük genişlik */
+            padding: 1.2rem; /* Daha az padding */
+            border-radius: 12px;
+            background: rgba(0, 30, 15, 0.3);
+            border: 2px solid transparent;
+            flex: 1; /* Mobilde eşit genişlik */
+            min-width: 250px; /* Mobil için minimum */
+        }
+        
+        .option:hover {
+            transform: translateY(-5px); /* Daha küçük hover efekti */
+            background: rgba(0, 40, 20, 0.4);
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+        
+        .option.selected {
+            transform: scale(1.02); /* Daha küçük seçim efekti */
+            background: rgba(0, 50, 25, 0.5);
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+        }
+        
+        .option-title {
+            font-size: clamp(1.1rem, 3.5vw, 1.5rem); /* Daha küçük */
+            margin-bottom: 0.6rem; /* Daha az boşluk */
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        .option-desc {
+            font-size: clamp(0.8rem, 2.2vw, 0.95rem); /* Daha küçük */
+            color: #88ffaa;
+            line-height: 1.4;
+            margin-top: 0.4rem; /* Daha az boşluk */
+        }
+        
+        .continue-button {
+            background: transparent;
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            font-size: clamp(1rem, 3.5vw, 1.5rem); /* Daha küçük */
+            padding: 0.8rem 2rem; /* Daha az padding */
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            letter-spacing: 1px; /* Daha az harf aralığı */
+            text-decoration: none;
+            display: none;
+            margin-top: 0.8rem; /* Daha az boşluk */
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+        
+        .continue-button.visible {
+            display: inline-block;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .continue-button:hover, .continue-button:focus {
+            background: rgba(0, 255, 136, 0.1);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
+            transform: scale(1.03); /* Daha küçük hover efekti */
+        }
+        
+        .continue-button:active {
+            transform: scale(0.98);
+        }
+        
+        .floating-particles {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+        
+        @keyframes float {
+            to {
+                transform: translateY(-100vh);
+            }
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 15px; /* Daha yukarı */
+            color: #008844;
+            font-size: 0.7rem; /* Daha küçük */
+        }
+        
+        /* MOBİL OPTİMİZASYONLARI */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px; /* Daha az padding */
+                justify-content: flex-start; /* Yukarıdan başla */
+                padding-top: 30px; /* Üstten boşluk */
+            }
+            
+            .options-container {
+                flex-direction: row; /* YATAYDA KAL */
+                gap: 15px;
+                margin: 1rem 0 1.5rem;
+                overflow-x: auto; /* Yatay kaydırma gerekirse */
+                padding: 10px 5px;
+                justify-content: space-between; /* Eşit dağılım */
+                -webkit-overflow-scrolling: touch; /* iOS smooth scroll */
+            }
+            
+            .option {
+                min-width: calc(50% - 10px); /* 2 şık yan yana */
+                max-width: calc(50% - 10px);
+                padding: 1rem 0.8rem; /* Daha az padding */
+                margin: 0;
+                flex-shrink: 0; /* Küçülmesin */
+            }
+            
+            .option-title {
+                font-size: clamp(1rem, 4vw, 1.3rem);
+                margin-bottom: 0.4rem;
+            }
+            
+            .option-desc {
+                font-size: clamp(0.75rem, 2.8vw, 0.85rem);
+                display: none; /* Mobilde açıklamayı gizle */
+            }
+            
+            .continue-button {
+                padding: 0.7rem 1.5rem;
+                margin-top: 0.5rem;
+                position: relative;
+                bottom: auto;
+                margin-bottom: 50px; /* Footer için yer */
+            }
+            
+            .footer {
+                bottom: 10px;
+                font-size: 0.65rem;
+            }
+        }
+        
+        /* ÇOK KÜÇÜK MOBİLLER (iPhone SE vb.) */
+        @media (max-width: 375px) {
+            .option {
+                min-width: calc(50% - 8px);
+                max-width: calc(50% - 8px);
+                padding: 0.8rem 0.6rem;
+            }
+            
+            .option-title {
+                font-size: 0.9rem;
+            }
+            
+            .main-question {
+                font-size: 1.1rem;
+                margin: 1rem 0 0.5rem;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+                margin-bottom: 0.2rem;
+            }
+        }
+        
+        /* TABLET OPTİMİZASYONU */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .option {
+                width: clamp(200px, 45vw, 280px);
+            }
+            
+            .options-container {
+                gap: 25px;
+            }
+        }
+        
+        /* YATAY MOBİL/TABLET */
+        @media (max-height: 500px) and (orientation: landscape) {
+            body {
+                padding: 10px;
+                justify-content: center;
+            }
+            
+            h1 {
+                font-size: 2rem;
+                margin-bottom: 0.2rem;
+            }
+            
+            .subtitle {
+                margin-bottom: 0.5rem;
+                font-size: 0.8rem;
+            }
+            
+            .main-question {
+                margin: 0.8rem 0 0.5rem;
+                font-size: 1.1rem;
+            }
+            
+            .pathway-subtitle {
+                margin-bottom: 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .options-container {
+                margin: 1rem 0 1.5rem;
+                flex-direction: row; /* Yatayda kal */
+            }
+            
+            .option {
+                padding: 0.8rem;
+                min-width: 200px;
+            }
+            
+            .continue-button {
+                margin-top: 0.5rem;
+                padding: 0.6rem 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-particles" id="particles"></div>
+    
+
+    <div class="main-question">How do you want to get nutrients, LUCA?</div>
+    <div class="pathway-subtitle">Choose metabolic path</div>
+    
+    <div class="options-container">
+        <!-- Autotrophic Option -->
+        <div class="option" id="autotrophic-option" data-path="autotrophic">
+            <div class="option-title">Produce my own</div>
+ 		<div class="option-desc"> Autotrophic path</div>
+        </div>
+        
+        <!-- Heterotrophic Option -->
+        <div class="option" id="heterotrophic-option" data-path="heterotrophic">
+            <div class="option-title">Get from outside</div>
+            <div class="option-desc"> Heterotrophic path</div>
+        </div>
+    </div>
+    
+    <a href="#" class="continue-button" id="continue-button">
+        CONTINUE EVOLUTION
+    </a>
+    
+
+
+    <script>
+        // Floating particles effect
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 40; // Daha az parçacık
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.top = Math.random() * 100 + 'vh';
+                const size = Math.random() * 2 + 1; // Daha küçük
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                const duration = Math.random() * 15 + 8; // Daha hızlı
+                const delay = Math.random() * 3;
+                particle.style.animation = `float ${duration}s linear ${delay}s infinite`;
+                particle.style.opacity = Math.random() * 0.4 + 0.1; // Daha şeffaf
+                particlesContainer.appendChild(particle);
+            }
+        }
+        
+        // Pathway selection logic
+        let selectedPathway = null;
+        const autotrophicOption = document.getElementById('autotrophic-option');
+        const heterotrophicOption = document.getElementById('heterotrophic-option');
+        const continueButton = document.getElementById('continue-button');
+        
+        // Check localStorage for previous selection
+        const savedPathway = localStorage.getItem('selected_pathway');
+        
+        // Selection function
+        function selectPathway(pathwayType) {
+            // Remove selected class from all options
+            autotrophicOption.classList.remove('selected');
+            heterotrophicOption.classList.remove('selected');
+            
+            // Add selected class to clicked option
+            if (pathwayType === 'autotrophic') {
+                autotrophicOption.classList.add('selected');
+                selectedPathway = 'autotrophic';
+            } else if (pathwayType === 'heterotrophic') {
+                heterotrophicOption.classList.add('selected');
+                selectedPathway = 'heterotrophic';
+            }
+            
+            // Show continue button
+            continueButton.classList.add('visible');
+            
+            // Set different URLs based on selection
+            if (selectedPathway === 'autotrophic') {
+                continueButton.href = "4-autotrophic.html";
+                continueButton.textContent = "BEGIN AUTOTROPHIC PATH";
+            } else {
+                continueButton.href = "4-heterotrophic.html";
+                continueButton.textContent = "BEGIN HETEROTROPHIC PATH";
+            }
+            
+            // Save selection to localStorage
+            localStorage.setItem('selected_pathway', selectedPathway);
+            localStorage.setItem('evolution_step', 'metabolic_pathway_selected');
+            
+            // Mobile feedback
+            if (window.innerWidth <= 768) {
+                // Haptic feedback simülasyonu
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            }
+        }
+        
+        // Event Listeners
+        autotrophicOption.addEventListener('click', () => {
+            selectPathway('autotrophic');
+        });
+        
+        heterotrophicOption.addEventListener('click', () => {
+            selectPathway('heterotrophic');
+        });
+        
+        // Mobile touch events with better feedback
+        const options = document.querySelectorAll('.option');
+        options.forEach(option => {
+            // Touch start
+            option.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                this.style.opacity = '0.7';
+                this.style.transform = 'scale(0.98)';
+            }, { passive: false });
+            
+            // Touch end
+            option.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                this.style.opacity = '1';
+                this.style.transform = '';
+                
+                // Small delay to show feedback before selection
+                setTimeout(() => {
+                    const path = this.getAttribute('data-path');
+                    selectPathway(path);
+                }, 100);
+            }, { passive: false });
+            
+            // Touch cancel (finger moved away)
+            option.addEventListener('touchcancel', function() {
+                this.style.opacity = '1';
+                this.style.transform = '';
+            });
+        });
+        
+        // Continue button handler
+        continueButton.addEventListener('click', function(e) {
+            if (!selectedPathway) {
+                e.preventDefault();
+                // Mobile-friendly feedback
+                const feedback = document.createElement('div');
+                feedback.textContent = 'Select a pathway first';
+                feedback.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,20,10,0.9); color:#ff9966; padding:12px 20px; border-radius:8px; border:1px solid #ff9966; font-size:0.9rem; z-index:1000;';
+                document.body.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 1500);
+                
+                // Vibrate on mobile
+                if (window.innerWidth <= 768 && navigator.vibrate) {
+                    navigator.vibrate([100, 50, 100]);
+                }
+                return;
+            }
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            
+            // Auto-select if there's a saved pathway
+            if (savedPathway) {
+                selectPathway(savedPathway);
+            }
+            
+            // Prevent zoom on double-tap (mobile)
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+            
+            // Prevent context menu on mobile
+            document.addEventListener('contextmenu', (e) => {
+                if (window.innerWidth <= 768) {
+                    e.preventDefault();
+                }
+            });
+            
+            // Test mobile responsiveness
+            console.log('Mobile test: Viewport width:', window.innerWidth, 'Touch supported:', 'ontouchstart' in window);
+        });
+        
+        // Window resize handler
+        window.addEventListener('resize', function() {
+            // Recalculate option widths on resize
+            if (window.innerWidth <= 768) {
+                const options = document.querySelectorAll('.option');
+                const containerWidth = document.querySelector('.options-container').offsetWidth;
+                const optionWidth = Math.max(150, (containerWidth / 2) - 20);
+                
+                options.forEach(option => {
+                    option.style.minWidth = optionWidth + 'px';
+                    option.style.maxWidth = optionWidth + 'px';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
