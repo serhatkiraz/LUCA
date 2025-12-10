@@ -89,11 +89,6 @@
             margin-top: 6px;
         }
         
-        .sym-small {
-            display: inline-block;
-            margin: 0 2px;
-        }
-        
         /* === UI ELEMENTS === */
         .message {
             position: absolute;
@@ -212,7 +207,7 @@
            ========================= */
         const ENTITY_SIZE = 80;
         const PICKUP_RANGE = 60;
-        const MAX_INV = 1;
+        const MAX_INV = 2; // HER KAYNAK TÜRÜNDEN MAX 2 TANE
         const RESOURCE_TYPES = ["purple", "gold", "white", "red"];
         const LIGHTNING_EMOJI = "⚡";
 
@@ -225,6 +220,10 @@
         let lightningCreationAllowed = true;
         const MAX_LIGHTNINGS_BEFORE_RAIN = 5;
         const MAX_TOTAL_CLONES = 8;
+        
+        // Yeni değişkenler
+        let initialEvolutionCompleted = false;
+        let rainStoppedForEvolution = false;
 
         /* UI */
         const messageEl = document.getElementById("message");
@@ -504,7 +503,7 @@
             return luca;
         }
 
-        function makeCloneAt(x, y) {
+        function makeCloneAt(x, y, fromLuca = false) {
             const cap = createCapsuleElement(x, y, false);
             cap.capsule.classList.remove('single-ring');
             cap.capsule.classList.add('double-ring');
@@ -515,7 +514,7 @@
                 x, y,
                 vx: rand(-1.2, 1.2),
                 vy: rand(-1.2, 1.2),
-                inventory: { purple: 1, gold: 1, white: 1, red: 1 },
+                inventory: { purple: 0, gold: 0, white: 0, red: 0 },
                 symbols: [],
                 isLuca: false
             };
@@ -569,6 +568,13 @@
             sym.style.top = (10 + Math.random() * (ENTITY_SIZE - 30)) + "px";
             entityObj.elementWrapper.appendChild(sym);
             entityObj.symbols.push(sym);
+        }
+
+        function clearVisualsFromCapsule(entityObj) {
+            if (entityObj.symbols) {
+                entityObj.symbols.forEach(s => s.remove());
+                entityObj.symbols = [];
+            }
         }
 
         /* =========================
@@ -635,6 +641,14 @@
             }
         }
 
+        function restartRainAfterDelay(ms = 5000) {
+            setTimeout(() => {
+                if (!rainStoppedForEvolution && clones.length < MAX_TOTAL_CLONES) {
+                    startHeavyRain();
+                }
+            }, ms);
+        }
+
         /* =========================
            MOVEMENT & COLLISION
            ========================= */
@@ -678,7 +692,7 @@
         }
 
         /* =========================
-           PICKUP LOGIC
+           PICKUP LOGIC - ŞİMŞEK AŞAMASI
            ========================= */
         function checkLightningsPickup() {
             for (let li = lightnings.length - 1; li >= 0; li--) {
@@ -693,24 +707,36 @@
                     
                     if (d < PICKUP_RANGE) {
                         const t = r.type;
-                        L.inventory[t] = Math.min(MAX_INV, (L.inventory[t] || 0) + 1);
-                        attachSymbolToLightning(L, t);
-                        r.element.remove();
-                        resources.splice(ri, 1);
+                        // MAX 2 KAYNAK KURALI
+                        if ((L.inventory[t] || 0) < MAX_INV) {
+                            L.inventory[t] = (L.inventory[t] || 0) + 1;
+                            attachSymbolToLightning(L, t);
+                            r.element.remove();
+                            resources.splice(ri, 1);
 
-                        if (RESOURCE_TYPES.every(k => (L.inventory[k] || 0) >= 1)) {
-                            evolveLightningToLuca(L);
-                            return;
+                            // 4 KAYNAK TÜRÜNDEN HER BİRİNDEN 2'ŞER TANE Mİ?
+                            if (RESOURCE_TYPES.every(k => (L.inventory[k] || 0) >= MAX_INV)) {
+                                performInitialEvolution(L);
+                                return;
+                            }
                         }
                     }
                 }
             }
         }
 
-        function evolveLightningToLuca(L) {
-            // TEK MESAJ - 6 SANİYE
-            showMessage("Now you are alive LUCA!", 6000);
-
+        /* =========================
+           İLK EVRİM (ŞİMŞEK → LUCA + 1 KLON)
+           ========================= */
+        function performInitialEvolution(L) {
+            // Kaynak yağmurunu durdur
+            stopRain();
+            rainStoppedForEvolution = true;
+            
+            // Now you are alive mesajını göster (5 saniye)
+            showMessage("Now you are alive LUCA!", 5000);
+            
+            // Şimşeği LUCA'ya dönüştür
             lightnings.forEach(other => {
                 if (other !== L) {
                     other.element.remove();
@@ -719,36 +745,44 @@
             
             lightnings = [L];
             const Lx = L.x, Ly = L.y;
-            const emojiNode = L.emojiEl;
             L.element.remove();
 
             const cap = createCapsuleElement(Lx, Ly, true);
             cap.capsule.classList.remove('single-ring');
             cap.capsule.classList.add('double-ring');
 
-            const startingInventory = L.inventory || { purple: 0, gold: 0, white: 0, red: 0 };
-
+            // Envanteri sıfırla (her türden 0)
             luca = {
                 elementWrapper: cap.wrapper,
                 element: cap.capsule,
                 x: Lx, y: Ly,
                 vx: rand(-1.2, 1.2),
                 vy: rand(-1.2, 1.2),
-                inventory: startingInventory,
+                inventory: { purple: 0, gold: 0, white: 0, red: 0 },
                 symbols: [],
                 isLuca: true
             };
 
             lightnings = [];
+            initialEvolutionCompleted = true;
+            
+            // 1 KLON OLUŞTUR
+            setTimeout(() => {
+                const clone = makeCloneAt(Lx + 50, Ly + 50, true);
+                clone.inventory = { purple: 0, gold: 0, white: 0, red: 0 };
+                clones.push(clone);
+                
+                // 5 saniye sonra yağmuru tekrar başlat
+                setTimeout(() => {
+                    rainStoppedForEvolution = false;
+                    startHeavyRain();
+                }, 5000);
+            }, 1000);
         }
 
-        function setCanonicalVisualsForCapsule(obj) {
-            if (obj.symbols) {
-                obj.symbols.forEach(s => s.remove());
-                obj.symbols = [];
-            }
-        }
-
+        /* =========================
+           LUCA VE KLONLAR İÇİN PICKUP LOGIC
+           ========================= */
         function checkLucaAndClonesPickupAndDivision() {
             if (luca) updateMovement(luca);
             clones.forEach(c => updateMovement(c));
@@ -766,45 +800,69 @@
                     
                     if (d < PICKUP_RANGE) {
                         const t = r.type;
-                        ent.inventory[t] = Math.min(MAX_INV, (ent.inventory[t] || 0) + 1);
-                        addPickupVisualToCapsule(ent, t);
-                        r.element.remove();
-                        resources.splice(ri, 1);
+                        // MAX 2 KAYNAK KURALI
+                        if ((ent.inventory[t] || 0) < MAX_INV) {
+                            ent.inventory[t] = (ent.inventory[t] || 0) + 1;
+                            addPickupVisualToCapsule(ent, t);
+                            r.element.remove();
+                            resources.splice(ri, 1);
 
-                        if (RESOURCE_TYPES.every(k => (ent.inventory[k] || 0) >= 2)) {
-                            const newClone = makeCloneAt(ent.x + 8, ent.y + 8);
-                            RESOURCE_TYPES.forEach(k => {
-                                ent.inventory[k] = 1;
-                                newClone.inventory[k] = 1;
-                            });
-                            
-                            if (ent.symbols) {
-                                ent.symbols.forEach(s => s.remove());
-                                ent.symbols = [];
-                            }
-                            
-                            setCanonicalVisualsForCapsule(ent);
-                            
-                            if (newClone.symbols) {
-                                newClone.symbols.forEach(s => s.remove());
-                                newClone.symbols = [];
-                            }
-                            
-                            setCanonicalVisualsForCapsule(newClone);
-                            clones.push(newClone);
-
-                            if (clones.length >= MAX_TOTAL_CLONES) {
-                                stopRain();
-                                setTimeout(() => {
-                                    // DEĞİŞTİRİLDİ: "RESOURCES DEPLETED"
-                                    showMessage("RESOURCES DEPLETED", 4000);
-                                    hungryBtn.style.display = "block";
-                                }, 2000);
+                            // 4 KAYNAK TÜRÜNDEN HER BİRİNDEN 2'ŞER TANE Mİ?
+                            if (RESOURCE_TYPES.every(k => (ent.inventory[k] || 0) >= MAX_INV)) {
+                                // BÖLÜNME (YENİ KLON OLUŞTUR)
+                                createNewCloneFromEntity(ent);
+                                break; // Bu entity için döngüyü durdur
                             }
                         }
                     }
                 }
+                
+                // 8 KLONA ULAŞILDI MI?
+                if (clones.length >= MAX_TOTAL_CLONES) {
+                    handleFinalStage();
+                    break;
+                }
             }
+        }
+
+        /* =========================
+           YENİ KLON OLUŞTURMA
+           ========================= */
+        function createNewCloneFromEntity(parentEntity) {
+            // Yeni klon oluştur
+            const newClone = makeCloneAt(parentEntity.x + 30, parentEntity.y + 30);
+            
+            // Her ikisinin de envanterini sıfırla
+            RESOURCE_TYPES.forEach(k => {
+                parentEntity.inventory[k] = 0;
+                newClone.inventory[k] = 0;
+            });
+            
+            // Görselleri temizle
+            clearVisualsFromCapsule(parentEntity);
+            clearVisualsFromCapsule(newClone);
+            
+            clones.push(newClone);
+            
+            // 8 klona ulaşıldı mı kontrol et
+            if (clones.length >= MAX_TOTAL_CLONES) {
+                handleFinalStage();
+            }
+        }
+
+        /* =========================
+           SON AŞAMA (8 KLON)
+           ========================= */
+        function handleFinalStage() {
+            stopRain();
+            rainStoppedForEvolution = true;
+            
+            setTimeout(() => {
+                showMessage("RESOURCES DEPLETED", 4000);
+                setTimeout(() => {
+                    hungryBtn.style.display = "block";
+                }, 2000);
+            }, 2000);
         }
 
         /* =========================
@@ -822,9 +880,11 @@
            MAIN GAME LOOP
            ========================= */
         function mainLoop() {
-            if (!luca) {
+            if (!initialEvolutionCompleted) {
+                // ŞİMŞEK AŞAMASI
                 checkLightningsPickup();
             } else {
+                // LUCA VE KLONLAR AŞAMASI
                 checkLucaAndClonesPickupAndDivision();
             }
 
@@ -850,7 +910,6 @@
             if (t) onPointerCreate(t.clientX, t.clientY);
         }, { passive: false });
 
-        // DEĞİŞTİRİLDİ: Buton yazısı "Are you hungry LUCA?"
         hungryBtn.addEventListener("click", () => {
             window.location.href = "3.html";
         });
@@ -892,7 +951,7 @@
             mainLoop();
         });
 
-        // Mobile optimization: prevent zoom on double-tap
+        // Mobile optimization
         document.addEventListener('dblclick', (e) => {
             if (window.innerWidth <= 768) {
                 e.preventDefault();
@@ -901,5 +960,3 @@
     </script>
 </body>
 </html>
-
-
