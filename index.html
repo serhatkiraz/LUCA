@@ -87,7 +87,7 @@
         // If lifeless world is completed, unlock corrupted world
         if (lifelessCompleted) {
             corruptedCircle.classList.remove('locked');
-            corruptedWorld.querySelector('.world-desc').textContent = 'Dark evolution path. Aggressive mutations.';
+            corruptedWorld.querySelector('.world-desc').textContent = 'Corrupted world. Alternate paths...';
         }
         
         // Lifeless world click handler
@@ -142,13 +142,13 @@
             if (worldType === 'lifeless') {
                 lifelessWorld.classList.add('selected');
                 selectedWorld = 'lifeless';
-                startButton.href = '2.html';
-                startButton.textContent = 'BEGIN EVOLUTION';
+                startButton.href = 'genesis.html';
+                startButton.textContent = 'Genesis';
             } else if (worldType === 'corrupted') {
                 corruptedWorld.classList.add('selected');
                 selectedWorld = 'corrupted';
                 startButton.href = 'corrupted-world.html';
-                startButton.textContent = 'BEGIN DARK EVOLUTION';
+                startButton.textContent = 'Corrupted World';
             }
             
             // Show start button
@@ -189,5 +189,6 @@
     </script>
 </body>
 </html>
+
 
 
