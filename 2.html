@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUCA | Genesis Phase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0, 40, 20, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 60, 30, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(0, 80, 40, 0.2) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        /* === GAME ELEMENTS STYLES === */
+        .resource {
+            position: absolute;
+            pointer-events: none;
+            will-change: transform;
+        }
+        
+        .entity {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            will-change: transform;
+            box-sizing: border-box;
+        }
+        
+        .lightning-emoji {
+            font-size: 32px;
+            user-select: none;
+            pointer-events: none;
+        }
+        
+        .capsule {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            box-sizing: border-box;
+            overflow: visible;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+        
+        .capsule.double-ring {
+            border: 3px double #00ff88;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .capsule.single-ring {
+            border: 2px solid #00ff88;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .slot {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 6px;
+        }
+        
+        .sym-small {
+            display: inline-block;
+            margin: 0 2px;
+        }
+        
+        /* === UI ELEMENTS === */
+        .message {
+            position: absolute;
+            left: 50%;
+            top: 10%;
+            transform: translateX(-50%);
+            background: rgba(0, 255, 136, 0.1);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: clamp(1rem, 3vw, 1.3rem);
+            opacity: 0;
+            transition: opacity 0.6s;
+            border: 1px solid #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            z-index: 100;
+            text-align: center;
+            max-width: 90%;
+            backdrop-filter: blur(5px);
+        }
+        
+        .action-btn {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 30px;
+            padding: 14px 28px;
+            border-radius: 50px;
+            border: 2px solid #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            font-size: clamp(1rem, 3vw, 1.3rem);
+            display: none;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+        
+        .action-btn:hover {
+            background: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+            transform: translateX(-50%) scale(1.05);
+        }
+        
+        .info-overlay {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #008844;
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            z-index: 90;
+            background: rgba(0, 20, 10, 0.5);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #008844;
+            max-width: 300px;
+        }
+        
+        .floating-particles {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+        
+        @keyframes float {
+            to {
+                transform: translateY(-100vh);
+            }
+        }
+        
+        /* === RESPONSIVE ADJUSTMENTS === */
+        @media (max-width: 768px) {
+            .capsule {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .lightning-emoji {
+                font-size: 24px;
+            }
+            
+            .message {
+                top: 5%;
+                padding: 10px 20px;
+            }
+            
+            .action-btn {
+                padding: 12px 24px;
+                bottom: 20px;
+            }
+            
+            .info-overlay {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+        }
+        
+        @media (max-height: 600px) {
+            .message {
+                top: 5%;
+                font-size: 0.9rem;
+            }
+            
+            .action-btn {
+                bottom: 15px;
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-particles" id="particles"></div>
+    
+    <div class="info-overlay">
+        <strong>GENESIS PHASE</strong><br>
+        Click/tap to create energy sparks<br>
+        Collect all 4 resource types to awaken LUCA
+    </div>
+    
+    <div id="message" class="message">You are alive, LUCA</div>
+    <button id="hungryBtn" class="action-btn">Continue Evolution →</button>
+
+    <script>
+        /* =========================
+           CONFIG / GLOBALS
+           ========================= */
+        const ENTITY_SIZE = 80;
+        const PICKUP_RANGE = 60;
+        const MAX_INV = 2;
+        const RESOURCE_TYPES = ["purple", "gold", "white", "red"];
+        const LIGHTNING_EMOJI = "⚡";
+
+        let lightnings = [];
+        let luca = null;
+        let clones = [];
+        let resources = [];
+        let heavyRain = false;
+        let spawnIntervalId = null;
+        let lightningCreationAllowed = true;
+        const MAX_LIGHTNINGS_BEFORE_RAIN = 5;
+        const MAX_TOTAL_CLONES = 10;
+
+        /* UI */
+        const messageEl = document.getElementById("message");
+        const hungryBtn = document.getElementById("hungryBtn");
+
+        /* =========================
+           FLOATING PARTICLES EFFECT
+           ========================= */
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.top = Math.random() * 100 + 'vh';
+                
+                const size = Math.random() * 3 + 1;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                const duration = Math.random() * 20 + 10;
+                const delay = Math.random() * 5;
+                particle.style.animation = `float ${duration}s linear ${delay}s infinite`;
+                
+                particle.style.opacity = Math.random() * 0.5 + 0.1;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        /* =========================
+           HELPER FUNCTIONS
+           ========================= */
+        function rand(min, max) { return Math.random() * (max - min) + min; }
+        
+        function createEl(tag = 'div', style = {}) { 
+            const e = document.createElement(tag); 
+            Object.assign(e.style, style); 
+            return e; 
+        }
+
+        /* =========================
+           LIGHTNING CREATION
+           ========================= */
+        function spawnLightningAt(pageX, pageY) {
+            if (!lightningCreationAllowed) return;
+            
+            const x = Math.max(0, Math.min(window.innerWidth - ENTITY_SIZE, pageX - ENTITY_SIZE / 2));
+            const y = Math.max(0, Math.min(window.innerHeight - ENTITY_SIZE, pageY - ENTITY_SIZE / 2));
+
+            const el = createEl('div', {
+                left: x + "px",
+                top: y + "px",
+                position: "absolute",
+                width: ENTITY_SIZE + "px",
+                height: ENTITY_SIZE + "px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+            });
+            
+            const span = document.createElement("div");
+            span.className = "lightning-emoji";
+            span.textContent = LIGHTNING_EMOJI;
+            el.appendChild(span);
+            document.body.appendChild(el);
+
+            const obj = {
+                element: el,
+                emojiEl: span,
+                x, y,
+                vx: rand(-1.2, 1.2),
+                vy: rand(-1.2, 1.2),
+                inventory: { purple: 0, gold: 0, white: 0, red: 0 },
+                symbols: [],
+                isLightning: true
+            };
+            
+            lightnings.push(obj);
+
+            if (lightnings.length >= MAX_LIGHTNINGS_BEFORE_RAIN) {
+                lightningCreationAllowed = false;
+                startHeavyRain();
+            }
+            
+            return obj;
+        }
+
+        function attachSymbolToLightning(L, type) {
+            const wrapper = createEl('div', {
+                position: "absolute",
+                left: (10 + Math.random() * 50) + "px",
+                top: (10 + Math.random() * 50) + "px"
+            });
+            
+            if (type === "purple") {
+                Object.assign(wrapper.style, {
+                    width: "12px",
+                    height: "12px",
+                    background: "#a020f0",
+                    borderRadius: "50%",
+                    boxShadow: "0 0 8px #a020f0"
+                });
+            }
+            if (type === "gold") {
+                Object.assign(wrapper.style, {
+                    width: "12px",
+                    height: "12px",
+                    background: "#ffd700",
+                    borderRadius: "50%",
+                    boxShadow: "0 0 8px #ffd700"
+                });
+            }
+            if (type === "white") {
+                Object.assign(wrapper.style, {
+                    width: "14px",
+                    height: "14px",
+                    border: "2px solid #fff",
+                    background: "transparent",
+                    borderRadius: "50%",
+                    boxShadow: "0 0 8px #fff"
+                });
+            }
+            if (type === "red") {
+                Object.assign(wrapper.style, {
+                    width: "0",
+                    height: "0",
+                    borderLeft: "6px solid transparent",
+                    borderRight: "6px solid transparent",
+                    borderBottom: "10px solid #ff3030",
+                    filter: "drop-shadow(0 0 4px #ff3030)"
+                });
+            }
+            
+            L.element.appendChild(wrapper);
+            L.symbols.push(wrapper);
+        }
+
+        /* =========================
+           CAPSULE CREATION (LUCA & Clones)
+           ========================= */
+        function createCapsuleElement(x, y, includeLightningEmoji = false) {
+            const wrapper = createEl('div', {
+                left: x + "px",
+                top: y + "px",
+                position: "absolute",
+                width: ENTITY_SIZE + "px",
+                height: ENTITY_SIZE + "px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+            });
+            
+            const capsule = createEl('div', {
+                width: ENTITY_SIZE + "px",
+                height: ENTITY_SIZE + "px"
+            });
+            
+            capsule.className = "capsule single-ring";
+
+            const slotTop = createEl('div', {
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: "6px"
+            });
+            
+            const slotMid = createEl('div', {
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: "4px"
+            });
+            
+            const slotBottom = createEl('div', {
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: "4px"
+            });
+
+            // TOP: Red triangle
+            const red = createEl('div', {});
+            Object.assign(red.style, {
+                width: "0",
+                height: "0",
+                borderLeft: "8px solid transparent",
+                borderRight: "8px solid transparent",
+                borderBottom: "14px solid #ff3030",
+                filter: "drop-shadow(0 0 4px #ff3030)"
+            });
+            slotTop.appendChild(red);
+
+            // MIDDLE: Purple and gold touching
+            const p = createEl('div', {});
+            Object.assign(p.style, {
+                width: "16px",
+                height: "16px",
+                background: "#a020f0",
+                borderRadius: "50%",
+                marginRight: "-2px",
+                boxShadow: "0 0 6px #a020f0"
+            });
+            
+            const g = createEl('div', {});
+            Object.assign(g.style, {
+                width: "16px",
+                height: "16px",
+                background: "#ffd700",
+                borderRadius: "50%",
+                marginLeft: "-2px",
+                boxShadow: "0 0 6px #ffd700"
+            });
+            
+            const bottomRow = createEl('div', {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+            });
+            
+            bottomRow.appendChild(p);
+            bottomRow.appendChild(g);
+            slotMid.appendChild(bottomRow);
+
+            // BOTTOM: Lightning emoji (only for LUCA)
+            if (includeLightningEmoji) {
+                const le = document.createElement("div");
+                le.className = "lightning-emoji";
+                le.textContent = LIGHTNING_EMOJI;
+                slotBottom.appendChild(le);
+            }
+
+            capsule.appendChild(slotTop);
+            capsule.appendChild(slotMid);
+            capsule.appendChild(slotBottom);
+            wrapper.appendChild(capsule);
+            document.body.appendChild(wrapper);
+
+            return {
+                wrapper,
+                capsule,
+                slots: { top: slotTop, mid: slotMid, bottom: slotBottom },
+                innerTopEmoji: includeLightningEmoji ? slotBottom.querySelector('.lightning-emoji') : null
+            };
+        }
+
+        function makeLucaFromLightning(L) {
+            const x = L.x, y = L.y;
+            L.symbols.forEach(s => s.remove());
+            L.symbols = [];
+            L.element.remove();
+
+            const cap = createCapsuleElement(x, y, true);
+            cap.capsule.classList.remove('single-ring');
+            cap.capsule.classList.add('double-ring');
+
+            const startingInventory = L.inventory || { purple: 0, gold: 0, white: 0, red: 0 };
+
+            luca = {
+                elementWrapper: cap.wrapper,
+                element: cap.capsule,
+                x, y,
+                vx: rand(-1.2, 1.2),
+                vy: rand(-1.2, 1.2),
+                inventory: startingInventory,
+                symbols: [],
+                isLuca: true
+            };
+
+            lightnings = [];
+            return luca;
+        }
+
+        function makeCloneAt(x, y) {
+            const cap = createCapsuleElement(x, y, false);
+            cap.capsule.classList.remove('single-ring');
+            cap.capsule.classList.add('double-ring');
+
+            const obj = {
+                elementWrapper: cap.wrapper,
+                element: cap.capsule,
+                x, y,
+                vx: rand(-1.2, 1.2),
+                vy: rand(-1.2, 1.2),
+                inventory: { purple: 1, gold: 1, white: 1, red: 1 },
+                symbols: [],
+                isLuca: false
+            };
+            
+            return obj;
+        }
+
+        function addPickupVisualToCapsule(entityObj, type) {
+            const sym = createEl('div', { position: "absolute" });
+            
+            if (type === "purple") {
+                Object.assign(sym.style, {
+                    width: "12px",
+                    height: "12px",
+                    background: "#a020f0",
+                    borderRadius: "50%",
+                    boxShadow: "0 0 6px #a020f0"
+                });
+            }
+            if (type === "gold") {
+                Object.assign(sym.style, {
+                    width: "12px",
+                    height: "12px",
+                    background: "#ffd700",
+                    borderRadius: "50%",
+                    boxShadow: "0 0 6px #ffd700"
+                });
+            }
+            if (type === "white") {
+                Object.assign(sym.style, {
+                    width: "14px",
+                    height: "14px",
+                    border: "2px solid #fff",
+                    background: "transparent",
+                    borderRadius: "50%",
+                    boxShadow: "0 0 6px #fff"
+                });
+            }
+            if (type === "red") {
+                Object.assign(sym.style, {
+                    width: "0",
+                    height: "0",
+                    borderLeft: "6px solid transparent",
+                    borderRight: "6px solid transparent",
+                    borderBottom: "10px solid #ff3030",
+                    filter: "drop-shadow(0 0 4px #ff3030)"
+                });
+            }
+            
+            sym.style.left = (10 + Math.random() * (ENTITY_SIZE - 30)) + "px";
+            sym.style.top = (10 + Math.random() * (ENTITY_SIZE - 30)) + "px";
+            entityObj.elementWrapper.appendChild(sym);
+            entityObj.symbols.push(sym);
+        }
+
+        /* =========================
+           RESOURCE SYSTEM
+           ========================= */
+        function spawnResource(type, x) {
+            const el = createEl('div', {
+                position: "absolute",
+                left: (x !== undefined ? x : rand(10, window.innerWidth - 30)) + "px",
+                top: "-40px"
+            });
+            
+            el.className = "resource";
+            
+            if (type === "red") {
+                Object.assign(el.style, {
+                    width: "0",
+                    height: "0",
+                    borderLeft: "12px solid transparent",
+                    borderRight: "12px solid transparent",
+                    borderBottom: "24px solid #ff3030",
+                    filter: "drop-shadow(0 0 8px #ff3030)"
+                });
+            } else {
+                const size = (type === "white") ? 28 : 22;
+                Object.assign(el.style, {
+                    width: size + "px",
+                    height: size + "px",
+                    borderRadius: "50%"
+                });
+                
+                if (type === "white") {
+                    el.style.background = "transparent";
+                    el.style.border = "3px solid #fff";
+                    el.style.boxShadow = "0 0 10px #fff";
+                } else {
+                    el.style.background = (type === "purple") ? "#a020f0" : "#ffd700";
+                    el.style.boxShadow = "0 0 10px " + ((type === "purple") ? "#a020f0" : "#ffd700");
+                }
+            }
+            
+            document.body.appendChild(el);
+            resources.push({ element: el, type, x: parseFloat(el.style.left), y: -40 });
+        }
+
+        function startHeavyRain() {
+            heavyRain = true;
+            if (spawnIntervalId) clearInterval(spawnIntervalId);
+            
+            spawnIntervalId = setInterval(() => {
+                const count = Math.floor(rand(3, 6));
+                for (let i = 0; i < count; i++) {
+                    const t = RESOURCE_TYPES[Math.floor(Math.random() * RESOURCE_TYPES.length)];
+                    spawnResource(t);
+                }
+            }, 300);
+        }
+
+        function stopRain() {
+            heavyRain = false;
+            if (spawnIntervalId) {
+                clearInterval(spawnIntervalId);
+                spawnIntervalId = null;
+            }
+        }
+
+        /* =========================
+           MOVEMENT & COLLISION
+           ========================= */
+        function updateMovement(obj) {
+            obj.x += obj.vx;
+            obj.y += obj.vy;
+            
+            if (obj.x < 0) { obj.x = 0; obj.vx *= -1; }
+            if (obj.y < 0) { obj.y = 0; obj.vy *= -1; }
+            if (obj.x > window.innerWidth - ENTITY_SIZE) { 
+                obj.x = window.innerWidth - ENTITY_SIZE; 
+                obj.vx *= -1; 
+            }
+            if (obj.y > window.innerHeight - ENTITY_SIZE) { 
+                obj.y = window.innerHeight - ENTITY_SIZE; 
+                obj.vy *= -1; 
+            }
+            
+            if (obj.element) {
+                obj.element.style.left = obj.x + "px";
+                obj.element.style.top = obj.y + "px";
+            }
+            if (obj.elementWrapper) {
+                obj.elementWrapper.style.left = obj.x + "px";
+                obj.elementWrapper.style.top = obj.y + "px";
+            }
+        }
+
+        function updateResources() {
+            for (let i = resources.length - 1; i >= 0; i--) {
+                const r = resources[i];
+                r.y += heavyRain ? 5.0 : 2.3;
+                r.element.style.top = r.y + "px";
+                r.x = parseFloat(r.element.style.left);
+                
+                if (r.y > window.innerHeight + 80) {
+                    r.element.remove();
+                    resources.splice(i, 1);
+                }
+            }
+        }
+
+        /* =========================
+           PICKUP LOGIC
+           ========================= */
+        function checkLightningsPickup() {
+            for (let li = lightnings.length - 1; li >= 0; li--) {
+                const L = lightnings[li];
+                updateMovement(L);
+                
+                for (let ri = resources.length - 1; ri >= 0; ri--) {
+                    const r = resources[ri];
+                    const rcx = r.x + 10, rcy = r.y + 10;
+                    const lx = L.x + ENTITY_SIZE / 2, ly = L.y + ENTITY_SIZE / 2;
+                    const d = Math.hypot(rcx - lx, rcy - ly);
+                    
+                    if (d < PICKUP_RANGE) {
+                        const t = r.type;
+                        L.inventory[t] = Math.min(MAX_INV, (L.inventory[t] || 0) + 1);
+                        attachSymbolToLightning(L, t);
+                        r.element.remove();
+                        resources.splice(ri, 1);
+
+                        if (RESOURCE_TYPES.every(k => (L.inventory[k] || 0) >= 1)) {
+                            evolveLightningToLuca(L);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        function evolveLightningToLuca(L) {
+            showMessage("PRIMORDIAL SPARK ACTIVATED", 3000);
+            setTimeout(() => {
+                showMessage("LUCA AWAKENED", 3000);
+            }, 1500);
+
+            lightnings.forEach(other => {
+                if (other !== L) {
+                    other.element.remove();
+                }
+            });
+            
+            lightnings = [L];
+            const Lx = L.x, Ly = L.y;
+            const emojiNode = L.emojiEl;
+            L.element.remove();
+
+            const cap = createCapsuleElement(Lx, Ly, true);
+            cap.capsule.classList.remove('single-ring');
+            cap.capsule.classList.add('double-ring');
+
+            const startingInventory = L.inventory || { purple: 0, gold: 0, white: 0, red: 0 };
+
+            luca = {
+                elementWrapper: cap.wrapper,
+                element: cap.capsule,
+                x: Lx, y: Ly,
+                vx: rand(-1.2, 1.2),
+                vy: rand(-1.2, 1.2),
+                inventory: startingInventory,
+                symbols: [],
+                isLuca: true
+            };
+
+            lightnings = [];
+        }
+
+        function setCanonicalVisualsForCapsule(obj) {
+            if (obj.symbols) {
+                obj.symbols.forEach(s => s.remove());
+                obj.symbols = [];
+            }
+        }
+
+        function checkLucaAndClonesPickupAndDivision() {
+            if (luca) updateMovement(luca);
+            clones.forEach(c => updateMovement(c));
+
+            const living = [];
+            if (luca) living.push(luca);
+            clones.forEach(c => living.push(c));
+
+            for (const ent of living) {
+                for (let ri = resources.length - 1; ri >= 0; ri--) {
+                    const r = resources[ri];
+                    const rcx = r.x + 10, rcy = r.y + 10;
+                    const ex = ent.x + ENTITY_SIZE / 2, ey = ent.y + ENTITY_SIZE / 2;
+                    const d = Math.hypot(rcx - ex, rcy - ey);
+                    
+                    if (d < PICKUP_RANGE) {
+                        const t = r.type;
+                        ent.inventory[t] = Math.min(MAX_INV, (ent.inventory[t] || 0) + 1);
+                        addPickupVisualToCapsule(ent, t);
+                        r.element.remove();
+                        resources.splice(ri, 1);
+
+                        if (RESOURCE_TYPES.every(k => (ent.inventory[k] || 0) >= 2)) {
+                            const newClone = makeCloneAt(ent.x + 8, ent.y + 8);
+                            RESOURCE_TYPES.forEach(k => {
+                                ent.inventory[k] = 1;
+                                newClone.inventory[k] = 1;
+                            });
+                            
+                            if (ent.symbols) {
+                                ent.symbols.forEach(s => s.remove());
+                                ent.symbols = [];
+                            }
+                            
+                            setCanonicalVisualsForCapsule(ent);
+                            
+                            if (newClone.symbols) {
+                                newClone.symbols.forEach(s => s.remove());
+                                newClone.symbols = [];
+                            }
+                            
+                            setCanonicalVisualsForCapsule(newClone);
+                            clones.push(newClone);
+
+                            if (clones.length >= MAX_TOTAL_CLONES) {
+                                stopRain();
+                                setTimeout(() => {
+                                    showMessage("POPULATION REACHED", 3000);
+                                    hungryBtn.style.display = "block";
+                                }, 2000);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /* =========================
+           UI FUNCTIONS
+           ========================= */
+        function showMessage(text, ms = 3000) {
+            messageEl.textContent = text;
+            messageEl.style.opacity = "1";
+            setTimeout(() => {
+                messageEl.style.opacity = "0";
+            }, ms);
+        }
+
+        /* =========================
+           MAIN GAME LOOP
+           ========================= */
+        function mainLoop() {
+            if (!luca) {
+                checkLightningsPickup();
+            } else {
+                checkLucaAndClonesPickupAndDivision();
+            }
+
+            updateResources();
+            requestAnimationFrame(mainLoop);
+        }
+
+        /* =========================
+           EVENT HANDLERS
+           ========================= */
+        function onPointerCreate(x, y) {
+            if (!lightningCreationAllowed) return;
+            spawnLightningAt(x, y);
+        }
+
+        window.addEventListener("click", (e) => {
+            onPointerCreate(e.clientX, e.clientY);
+        });
+        
+        window.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            if (t) onPointerCreate(t.clientX, t.clientY);
+        }, { passive: false });
+
+        hungryBtn.addEventListener("click", () => {
+            window.location.href = "3.html";
+        });
+
+        window.addEventListener("resize", () => {
+            const W = window.innerWidth, H = window.innerHeight;
+            
+            lightnings.forEach(L => {
+                L.x = Math.min(L.x, W - ENTITY_SIZE);
+                L.y = Math.min(L.y, H - ENTITY_SIZE);
+                if (L.element) {
+                    L.element.style.left = L.x + "px";
+                    L.element.style.top = L.y + "px";
+                }
+            });
+            
+            if (luca) {
+                luca.x = Math.min(luca.x, W - ENTITY_SIZE);
+                luca.y = Math.min(luca.y, H - ENTITY_SIZE);
+                luca.elementWrapper.style.left = luca.x + "px";
+                luca.elementWrapper.style.top = luca.y + "px";
+            }
+            
+            clones.forEach(c => {
+                c.x = Math.min(c.x, W - ENTITY_SIZE);
+                c.y = Math.min(c.y, H - ENTITY_SIZE);
+                if (c.elementWrapper) {
+                    c.elementWrapper.style.left = c.x + "px";
+                    c.elementWrapper.style.top = c.y + "px";
+                }
+            });
+        });
+
+        /* =========================
+           INITIALIZATION
+           ========================= */
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            mainLoop();
+            
+            // Initial instruction
+            setTimeout(() => {
+                showMessage("CREATE ENERGY SPARKS", 2000);
+            }, 1000);
+        });
+
+        // Mobile optimization: prevent zoom on double-tap
+        document.addEventListener('dblclick', (e) => {
+            if (window.innerWidth <= 768) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
