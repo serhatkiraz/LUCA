@@ -142,20 +142,6 @@
             transform: translateX(-50%) scale(1.05);
         }
         
-        .info-overlay {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            color: #008844;
-            font-size: clamp(0.8rem, 2vw, 1rem);
-            z-index: 90;
-            background: rgba(0, 20, 10, 0.5);
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: 1px solid #008844;
-            max-width: 300px;
-        }
-        
         .floating-particles {
             position: fixed;
             width: 100%;
@@ -199,13 +185,6 @@
                 padding: 12px 24px;
                 bottom: 20px;
             }
-            
-            .info-overlay {
-                top: 10px;
-                left: 10px;
-                right: 10px;
-                max-width: none;
-            }
         }
         
         @media (max-height: 600px) {
@@ -224,14 +203,8 @@
 <body>
     <div class="floating-particles" id="particles"></div>
     
-    <div class="info-overlay">
-        <strong>GENESIS PHASE</strong><br>
-        Click/tap to create energy sparks<br>
-        Collect all 4 resource types to awaken LUCA
-    </div>
-    
-    <div id="message" class="message">You are alive, LUCA</div>
-    <button id="hungryBtn" class="action-btn">Continue Evolution →</button>
+    <div id="message" class="message">Now you are alive LUCA!</div>
+    <button id="hungryBtn" class="action-btn">Are you hungry LUCA?</button>
 
     <script>
         /* =========================
@@ -735,10 +708,8 @@
         }
 
         function evolveLightningToLuca(L) {
-            showMessage("PRIMORDIAL SPARK ACTIVATED", 3000);
-            setTimeout(() => {
-                showMessage("LUCA AWAKENED", 3000);
-            }, 1500);
+            // TEK MESAJ - 6 SANİYE
+            showMessage("Now you are alive LUCA!", 6000);
 
             lightnings.forEach(other => {
                 if (other !== L) {
@@ -825,7 +796,8 @@
                             if (clones.length >= MAX_TOTAL_CLONES) {
                                 stopRain();
                                 setTimeout(() => {
-                                    showMessage("POPULATION REACHED", 3000);
+                                    // DEĞİŞTİRİLDİ: "RESOURCES DEPLETED"
+                                    showMessage("RESOURCES DEPLETED", 4000);
                                     hungryBtn.style.display = "block";
                                 }, 2000);
                             }
@@ -878,6 +850,7 @@
             if (t) onPointerCreate(t.clientX, t.clientY);
         }, { passive: false });
 
+        // DEĞİŞTİRİLDİ: Buton yazısı "Are you hungry LUCA?"
         hungryBtn.addEventListener("click", () => {
             window.location.href = "3.html";
         });
@@ -917,11 +890,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             createParticles();
             mainLoop();
-            
-            // Initial instruction
-            setTimeout(() => {
-                showMessage("CREATE ENERGY SPARKS", 2000);
-            }, 1000);
         });
 
         // Mobile optimization: prevent zoom on double-tap
